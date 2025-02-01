@@ -1,101 +1,239 @@
+"use client";
+
 import Image from "next/image";
+import { ReactNode, useEffect, useState } from "react";
+import config from "../../config";
+import {
+  RefinedActivity,
+  Activity,
+  ProfileData,
+  Status,
+  LanyardData,
+} from "../types";
+import { SiDiscord, SiGithub, SiLastdotfm, SiRoblox } from "react-icons/si";
+import Link from "next/link";
+import { HiSparkles } from "react-icons/hi2";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [profileData, setProfileData] = useState<ProfileData>(
+    config.fallbackProfile
+  );
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [loaded, setLoaded] = useState<boolean>(false);
+
+  const colorsFromStatus = {
+    online: "outline-green-500",
+    idle: "outline-yellow-500",
+    dnd: "outline-red-500",
+    offline: "outline-gray-500",
+  };
+
+  const calcAge = (birthDate: Date) => {
+    const today = new Date();
+    const diff = today.getTime() - birthDate.getTime();
+    const age = diff / (1000 * 60 * 60 * 24 * 365.25);
+    return Math.round(age * 100) / 100;
+  };
+
+  const refineActivity = (activity: Activity): RefinedActivity => {
+    const { name, details, state } = activity;
+
+    if (!state) {
+      return {
+        ...activity,
+        custom: false,
+        text: name,
+      };
+    }
+
+    switch (name) {
+      case "Sonixd":
+        return {
+          ...activity,
+          custom: true,
+          text: `Listening to ${details} ${state.replace("By", "by")}`,
+        };
+      case "Visual Studio Code":
+        return {
+          ...activity,
+          custom: true,
+          text: `${details} in ${state.toLowerCase()}`,
+        };
+      case "Roblox":
+        return {
+          ...activity,
+          custom: true,
+          text: `Playing ${details
+            .replace("Playing", "")
+            .replace(/\[.+\]/, "")} on Roblox`,
+        };
+      default:
+        return {
+          ...activity,
+          custom: false,
+          text: name,
+        };
+    }
+  };
+
+  useEffect(() => {
+    const refineActivities = (activities: Activity[]): RefinedActivity[] =>
+      activities.map(refineActivity);
+
+    const buildProfileData = (data: LanyardData): ProfileData => {
+      if (!("discord_user" in data)) {
+        return config.fallbackProfile;
+      }
+
+      return {
+        username: data.discord_user.global_name,
+        age: calcAge(config.birthDate),
+        avatarUrl: `https://cdn.discordapp.com/avatars/${config.discordUserId}/${data.discord_user.avatar}.webp`,
+        status: Status[data.discord_status],
+        activitities: refineActivities(data.activities) as RefinedActivity[],
+      };
+    };
+
+    const socket = new WebSocket("wss://api.lanyard.rest/socket");
+    socket.onopen = () => {
+      socket.send(
+        JSON.stringify({
+          op: 2,
+          d: {
+            subscribe_to_ids: [config.discordUserId],
+          },
+        })
+      );
+    };
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.op === 1) {
+        const interval = data.d.heartbeat_interval;
+        setInterval(() => {
+          socket.send(
+            JSON.stringify({
+              op: 3,
+            })
+          );
+        }, interval);
+      } else if (data.op === 0 && data.t === "PRESENCE_UPDATE") {
+        setProfileData(buildProfileData(data.d));
+      } else if (data.op === 0 && data.t === "INIT_STATE") {
+        setProfileData(buildProfileData(data.d[config.discordUserId]));
+        setLoaded(true);
+      }
+    };
+  }, []);
+
+  function PlatformLink(props: {
+    href: string;
+    icon: ReactNode;
+    text: string;
+    copyText?: boolean;
+  }) {
+    return (
+      <Link
+        className="flex flex-row justify-between items-center hover:opacity-80 transition-all group"
+        href={props.href}
+        onClick={(e) => {
+          if (props.copyText) {
+            e.preventDefault();
+            navigator.clipboard.writeText(props.text).then(
+              () => {
+                alert(`Copied ${props.text} to clipboard!`);
+              },
+              () => {
+                alert(`Could not copy ${props.text} to clipboard :(`);
+              }
+            );
+          }
+        }}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {props.icon}
+        <div className="w-full mx-4 border-b border-dotted group-hover:border-solid border-neutral-300" />
+        <span>{props.text}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div>
+      {!loaded && (
+        <div className="absolute flex items-center justify-center w-screen h-screen bg-neutral-950 z-10" />
+      )}
+      <div className="max-w-sm sm:max-w-lg text-center sm:text-left">
+        <div className="flex items-center sm:items-start flex-col">
+          <Image
+            className={`outline outline-2 ${
+              colorsFromStatus[profileData.status]
+            }`}
+            src={profileData.avatarUrl}
+            alt="User's avatar"
+            width={80}
+            height={0}
+          />
+          <h1 className="mt-4 text-xl font-bold">{profileData.username}</h1>
+          <div className="flex flex-row items-center">
+            <HiSparkles className="text-neutral-400 mr-2 hidden md:block" />
+            <p className="text-neutral-400">
+              {(() => {
+                if (profileData.activitities.length > 0) {
+                  const activity = profileData.activitities[0];
+                  if (activity.custom) {
+                    return activity.text;
+                  }
+
+                  return `Playing ${activity.name}`;
+                }
+
+                return "Idle";
+              })()}
+            </p>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        <div className="mt-4 space-y-1 text-neutral-300">
+          <p>
+            Hey! I&rsquo;m {profileData.username}, a {profileData.age} year old
+            programmer who enjoys all things related to technology. I&rsquo;m
+            currently studying computer science at an academy.
+          </p>
+          <p>
+            In my free time, I enjoy playing games and watching movies. I also
+            love music, and I listen to a wide variety of genres.
+          </p>
+          <p>
+            If you want to know more about me, you can find me on the platforms
+            I&rsquo;ve listed below
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-col space-y-2">
+          <PlatformLink
+            copyText={true}
+            href={`https://discord.com/users/${config.discordUserId}`}
+            icon={<SiDiscord size={32} />}
+            text={"logix.lol"}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <PlatformLink
+            href={`https://github.com/logixism`}
+            icon={<SiGithub size={32} />}
+            text={"logixism"}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          <PlatformLink
+            href={`https://www.last.fm/user/logixism`}
+            icon={<SiLastdotfm size={32} />}
+            text={"logixism"}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <PlatformLink
+            href={`https://roblox.com/users/2947401001/profile`}
+            icon={<SiRoblox size={32} />}
+            text={"logixism"}
+          />
+        </div>
+      </div>
     </div>
   );
 }
