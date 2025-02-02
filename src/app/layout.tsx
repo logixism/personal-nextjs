@@ -11,6 +11,11 @@ const funnelDisplay = Funnel_Display({
 export const metadata: Metadata = {
   title: "logix.lol",
   description: "logix' personal website",
+  icons: {
+    icon: "/seal.png",
+    shortcut: "/seal.png",
+    apple: "/seal.png",
+  },
   openGraph: {
     type: "website",
     url: "https://logix.lol",
