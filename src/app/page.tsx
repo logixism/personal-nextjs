@@ -52,7 +52,7 @@ export default function Home() {
         return {
           ...activity,
           custom: true,
-          text: `Listening to ${details} ${state.replace("By", "by")}`,
+          text: `Listening to ${details} by ${state}`,
         };
       case "Visual Studio Code":
         return {
