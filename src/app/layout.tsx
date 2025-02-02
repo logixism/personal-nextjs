@@ -36,7 +36,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${funnelDisplay.variable} antialiased overflow-hidden`}>
         <div className="flex flex-col items-center justify-center h-screen">
-          <Navbar />
+          {/* <Navbar /> */}
           {children}
         </div>
       </body>

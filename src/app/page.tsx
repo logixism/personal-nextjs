@@ -13,13 +13,14 @@ import {
 import { SiDiscord, SiGithub, SiLastdotfm, SiRoblox } from "react-icons/si";
 import Link from "next/link";
 import { HiSparkles } from "react-icons/hi2";
+import Content from "@/components/Content";
 
 export default function Home() {
   const [profileData, setProfileData] = useState<ProfileData>(
     config.fallbackProfile
   );
 
-  const [loaded, setLoaded] = useState<boolean>(false);
+  // const [loaded, setLoaded] = useState<boolean>(false);
 
   const colorsFromStatus = {
     online: "outline-green-500",
@@ -120,7 +121,7 @@ export default function Home() {
         setProfileData(buildProfileData(data.d));
       } else if (data.op === 0 && data.t === "INIT_STATE") {
         setProfileData(buildProfileData(data.d[config.discordUserId]));
-        setLoaded(true);
+        // setLoaded(true);
       }
     };
   }, []);
@@ -160,15 +161,13 @@ export default function Home() {
 
   return (
     <div>
-      {!loaded && (
+      {/* {!loaded && (
         <div className="absolute flex items-center justify-center w-screen h-screen bg-neutral-950 z-10" />
-      )}
-      <div className="max-w-sm sm:max-w-lg text-center sm:text-left">
+      )} */}
+      <Content>
         <div className="flex items-center sm:items-start flex-col">
           <Image
-            className={`outline outline-2 ${
-              colorsFromStatus[profileData.status]
-            }`}
+            className={`outline-2 ${colorsFromStatus[profileData.status]}`}
             src={profileData.avatarUrl}
             alt="User's avatar"
             width={80}
@@ -210,7 +209,7 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="mt-4 flex flex-col space-y-2">
+        <div className="mt-4 flex flex-col w-full space-y-2">
           <PlatformLink
             copyText={true}
             href={`https://discord.com/users/${config.discordUserId}`}
@@ -233,7 +232,7 @@ export default function Home() {
             text={"logixism"}
           />
         </div>
-      </div>
+      </Content>
     </div>
   );
 }

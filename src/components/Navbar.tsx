@@ -34,7 +34,6 @@ export default function Navbar() {
   return (
     <div className="flex flex-row mb-8 space-x-4 w-full max-w-sm sm:max-w-lg">
       <NavbarLink href="/">/home</NavbarLink>
-      <NavbarLink href="/about">/about</NavbarLink>
       <NavbarLink href="/projects">/projects</NavbarLink>
     </div>
   );
