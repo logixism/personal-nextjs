@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Funnel_Display } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
+// import Navbar from "@/components/Navbar";
 
 const funnelDisplay = Funnel_Display({
   variable: "--font-funnel-display",
